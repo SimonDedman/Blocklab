@@ -28,6 +28,9 @@ AllDailies <- readRDS(paste0(loadloc, "AllDailies_HIFSDA_Stocknames_StocksPaperV
 #   mutate(DataType = str_sub(fishID, -1, -1), # # "C" "D" "P"
 #          Day = lubridate::yday(Date))
 
+# Issue: drop_na(Date, lat, lon) used on whole dbase but removes usable data!####
+# 3 instances within script, but input data likely already filtered this way.
+
 # AllDailies %>%
 #   + group_by(Stock) %>%
 #   + summarise(toppids = length(unique(toppid)))
@@ -70,6 +73,11 @@ print(paste0("n fishdays GOM: ", AllDailies %>% filter(Stock == "GOM") %>% nrow,
 # AllDailies %<>% filter(toppid %in% fishlist) # filter: removed 246 rows (1%), 30,117 rows remaining
 # rm(fishlist)
 
+# colourblind palette colours
+CB_PALETTE      = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+# plot(x = 1:8, y = 1:8, col = CB_PALETTE, pch = 16, cex = 4)
+CB_BLUE         = CB_PALETTE[6] # "#0072B2"
+CB_RED          = CB_PALETTE[7] # "#D55E00"
 
 
 # 2020.11.05 Compare only midsized individuals####
@@ -83,7 +91,7 @@ print(paste0("n fishdays GOM: ", AllDailies %>% filter(Stock == "GOM") %>% nrow,
 
 
 
-# Fig1 median location tracks, velocity colours####
+# Fig SM was 1: median location tracks, velocity colours####
 saveloc = paste0(machine, "Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/Maps/") #ensure trailing /slash
 # median location per yearday (better to use Emils loop-normalising code for northernmost point etc)
 
@@ -181,7 +189,7 @@ ggplot() +   #plot lines by year
 
 
 
-# Fig2 6panel Dot facet & violin plots####
+# Fig2 6panel Dot facet & violin plots FIGURE 6####
 saveloc = paste0(machine, "Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/points/")
 AllDailies$MeanDepth24h <- -AllDailies$MeanDepth24h
 AllDailies %<>%
@@ -201,7 +209,7 @@ ggplot(AllDailies %>% drop_na(MarineZone_f), # ,MeanDepth24h > 1
   stat_smooth(aes(colour = Stock)) +
   facet_wrap(.~MarineZone_f) + # , scales = "free" default fixed scales allows sharing axis labels
   labs(x = "Year Day", y = "Mean Depth, m") +
-  scale_colour_manual(values = c("red", "blue", "grey")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE, "grey")) +
   # avoid terminal Jan: https://stackoverflow.com/questions/14759676/specification-of-first-and-last-tick-marks-with-scale-x-date
   scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = c(as.Date("2018-01-01"), as.Date("2018-12-30")), expand = c(0,0)) +
   # scale_y_continuous(limits = c(0, 600), breaks = seq(0, 600, by = 100), trans = recurve_trans) + # depth as positive, 0 at bottom (bad)
@@ -215,6 +223,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f), # ,MeanDepth24h > 1
                                    legend.title = element_blank(),
                                    # legend.key.width = unit(2, "cm"),
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(saveloc, today(), "_FacetZone_MeanDepth", ".png"),
@@ -228,8 +238,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
   stat_summary(fun.y = mean, geom = "point", shape = 18, size = 4, position = position_dodge(0.9), colour = "white") + # , fill = "black" kills stock separation
   # stat_summary(fun.data = mean_sdl, mult = 1, geom = "pointrange", color = "black") +
   labs(x = "Marine Zone", y = "Mean Depth, m") +
-  scale_fill_manual(values = c("red", "blue")) +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   scale_y_continuous(limits = c(-600, 0), breaks = myseq, trans = recurve_trans) + # depth as negative, works
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -238,6 +248,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
                                    legend.direction = "horizontal",
                                    legend.title = element_blank(),
                                    panel.grid.minor = element_blank(),
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(saveloc, today(), "_FacetZoneExtra_MeanDepthViolin", ".png"),
@@ -254,7 +266,7 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
   stat_smooth(aes(colour = Stock)) +
   facet_wrap(.~MarineZone_f) + #, scales = "free"
   labs(x = "Year Day", y = "Mean External Temperature, C") +
-  scale_colour_manual(values = c("red", "blue", "grey")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE, "grey")) +
   scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = c(as.Date("2018-01-01"), as.Date("2018-12-30")), expand = c(0,0)) +
   scale_y_continuous(breaks = seq(5, 30, by = 5), limits = c(5, 30)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
@@ -265,6 +277,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
                                    legend.title = element_blank(),
                                    panel.grid.minor = element_blank(),
                                    strip.text.x = element_text(size = rel(2)),
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(saveloc, today(), "_FacetZone_MeanTemp", ".png"),
          plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8,
@@ -276,8 +290,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
   geom_violin() + # , size = 0.5
   stat_summary(fun.y = mean, geom = "point", shape = 18, size = 4, position = position_dodge(0.9), colour = "white") + # , fill = "black" kills stock separation
   labs(x = "Marine Zone", y = "Mean External Temperature, C") +
-  scale_fill_manual(values = c("red", "blue")) +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   scale_y_continuous(breaks = seq(5, 30, by = 5), limits = c(5, 30)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -287,6 +301,8 @@ ggplot(AllDailies %>% drop_na(MarineZone_f),
                                    legend.title = element_blank(),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.grid.minor = element_blank(),
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(saveloc, today(), "_FacetZoneExtra_MeanTempViolin", ".png"),
          plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
@@ -304,7 +320,7 @@ ggplot(AllDailies %>% filter(between(lon, -79, -73),
   geom_point(aes(colour = Stock), size = 0.5) + # , col = toppid # , group = toppid
   stat_smooth(aes(colour = Stock)) +
   labs(x = "Year Day", y = "Mean Depth, m") +
-  scale_colour_manual(values = c("red", "blue", "grey")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE, "grey")) +
   # avoid terminal Jan: https://stackoverflow.com/questions/14759676/specification-of-first-and-last-tick-marks-with-scale-x-date
   scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = c(as.Date("2018-01-01"), as.Date("2018-12-30")), expand = c(0,0)) +
   # scale_y_continuous(limits = c(0, 600), breaks = seq(0, 600, by = 100), trans = recurve_trans) + # depth as positive, 0 at bottom (bad)
@@ -331,8 +347,8 @@ ggplot(AllDailies %>% filter(between(lon, -79, -73),
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, position = position_dodge(0.9), colour = "white") + # , fill = "black" kills stock separation
   # stat_summary(fun.data = mean_sdl, mult = 1, geom = "pointrange", color = "black") +
   labs(x = "Marine Zone", y = "Mean Depth, m") +
-  scale_fill_manual(values = c("red", "blue")) +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   scale_y_continuous(limits = c(-600, 0), breaks = myseq, trans = recurve_trans) + # depth as negative, works
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -355,7 +371,7 @@ ggplot(AllDailies %>% filter(between(lon, -79, -73),
   geom_point(aes(colour = Stock), size = 0.5) + # , col = toppid # , group = toppid
   stat_smooth(aes(colour = Stock)) +
   labs(x = "Year Day", y = "Mean External Temperature, C") +
-  scale_colour_manual(values = c("red", "blue", "grey")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE, "grey")) +
   scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = c(as.Date("2018-01-01"), as.Date("2018-12-30")), expand = c(0,0)) +
   scale_y_continuous(breaks = seq(5, 30, by = 5), limits = c(5, 30)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
@@ -378,8 +394,8 @@ ggplot(AllDailies %>% filter(between(lon, -79, -73),
   geom_violin() + # , size = 0.5
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, position = position_dodge(0.9), colour = "white") + # , fill = "black" kills stock separation
   labs(x = "Marine Zone", y = "Mean External Temperature, C") +
-  scale_fill_manual(values = c("red", "blue")) +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   scale_y_continuous(breaks = seq(5, 30, by = 5), limits = c(5, 30)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -397,7 +413,7 @@ ggplot(AllDailies %>% filter(between(lon, -79, -73),
 
 
 
-# Fig3etc 2d boxplots####
+# Fig3etc 2d boxplots FIGURE 7&9####
 if (min(AllDailies$MeanDepth24h, na.rm = T) < 0) AllDailies$MeanDepth24h <- -AllDailies$MeanDepth24h # above re-reverses depths which are made negative above
 library(mapplots)
 library(maptools)
@@ -417,7 +433,7 @@ barplot2dMap <- function(x,
                          origin = c(0,0),
                          cellsize = c(1,1),
                          groupcol = "Stock",
-                         mycolours = c("red", "blue"),
+                         mycolours = c(CB_RED, CB_BLUE),
                          legendtitle = "2D Barplot",
                          zCol = "Count", # MeanETemp24h MeanDepth24h
                          zFun = "sum",
@@ -516,9 +532,9 @@ MarZonesTable <- data.frame(Name = c("WholeArea", "ForageW", "MixingW", "MixingW
 for (j in c("Count")) { # ,  "MeanETemp24h", "MinETemp24h", "MeanDepth24h"
   for (i in 1:nrow(MarZonesTable)) { # i <- 8
     print(paste0(j, " ", i, "/", nrow(MarZonesTable), ", ", MarZonesTable$Name[i]))
-    mycolours = c("red", "blue")
-    if (MarZonesTable$Name[i] == "Med") mycolours = "blue" # %in% c("CentralAtl", "Med")
-    if (MarZonesTable$Name[i] == "GOM") mycolours = "red"
+    mycolours = c(CB_RED, CB_BLUE)
+    if (MarZonesTable$Name[i] == "Med") mycolours = CB_BLUE # %in% c("CentralAtl", "Med")
+    if (MarZonesTable$Name[i] == "GOM") mycolours = CB_RED
 
     for (k in 1:12) { # loop through months
       print(paste0("month ", k, "/12"))
@@ -535,7 +551,7 @@ for (j in c("Count")) { # ,  "MeanETemp24h", "MinETemp24h", "MeanDepth24h"
                            ", Med: ", adminFilt %>% filter(Stock == "Med") %>% nrow)
       # mylejtitle <- paste0("N fishdays GOM: ", adminFilt %>% filter(Stock == "algorithmGOM") %>% nrow, # algorithm data
       #                      ", Med: ", adminFilt %>% filter(Stock == "algorithmMed") %>% nrow)
-      if (MarZonesTable$Name[i] == "CentralAtl" & k %in% c(1, 2)) mycolours = "blue"
+      if (MarZonesTable$Name[i] == "CentralAtl" & k %in% c(1, 2)) mycolours = CB_BLUE
       barplot2dMap(x = adminFilt,
                    cellsize = c(0.5, 0.5),
                    mycolours = mycolours,
@@ -565,9 +581,9 @@ AllDailies[which(AllDailies$MarineZone == "GOM"), "Marine_Zone"] <- "GOM" # over
 # Run function as loop, all months together, Count variable only
 for (i in 1:nrow(MarZonesTable)) { # i <- 8
   print(paste0(i, "/", nrow(MarZonesTable), ", ", MarZonesTable$Name[i]))
-  mycolours = c("red", "blue")
-  if (MarZonesTable$Name[i] == "Med") mycolours = c("blue", "deepskyblue") # %in% c("CentralAtl", "Med")
-  if (MarZonesTable$Name[i] == "GOM") mycolours = c("red", "violetred2")
+  mycolours = c(CB_RED, CB_BLUE)
+  if (MarZonesTable$Name[i] == "Med") mycolours = c(CB_BLUE, "deepskyblue") # %in% c("CentralAtl", "Med")
+  if (MarZonesTable$Name[i] == "GOM") mycolours = c(CB_RED, "violetred2")
 
   adminFilt <- AllDailies %>%
     filter(between(lon, MarZonesTable$lonmin[i], MarZonesTable$lonmax[i]),
@@ -611,7 +627,7 @@ for (i in 1:nrow(MarZonesTable)) { # i <- 8
 
 
 
-# Fig 4 etc ViolinPlots & ppgHistos####
+# Fig 4 etc ViolinPlots & ppgHistos FIGURE8 & SM####
 setwd(paste0(machine, "Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/boxplots/ByZoneGroupStock"))
 
 if (min(AllDailies$MeanDepth24h, na.rm = T) >= 0) AllDailies$MeanDepth24h <- -AllDailies$MeanDepth24h # make depths negative
@@ -652,10 +668,10 @@ for (i in myzones) {
       {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                                 breaks = seq(from = 0, to = 24, by = 3),
                                                                 labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-      scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-      {if (i == "SOG" | i == "Med") scale_colour_manual(values = c("blue"))} + # if only med stock, only red. If only GOM, will use first value which is blue which is right
-      scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
-      {if (i == "SOG" | i == "Med") scale_fill_manual(values = c("blue"))} +
+      scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+      {if (i == "SOG" | i == "Med") scale_colour_manual(values = c(CB_BLUE))} + # if only med stock, only red. If only GOM, will use first value which is blue which is right
+      scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+      {if (i == "SOG" | i == "Med") scale_fill_manual(values = c(CB_BLUE))} +
       theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                        title = element_text(size = rel(2)),
                                        legend.position = "none",
@@ -688,8 +704,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-    scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -722,8 +738,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-    scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -763,8 +779,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("violetred2", "red")) + # manually colour plots if specified
-    scale_fill_manual(values = c("violetred2", "red")) + # manually colour plots if specified
+    scale_colour_manual(values = c("violetred2", CB_RED)) + # manually colour plots if specified
+    scale_fill_manual(values = c("violetred2", CB_RED)) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -794,8 +810,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("blue", "deepskyblue")) + # manually colour plots if specified
-    scale_fill_manual(values = c("blue", "deepskyblue")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_BLUE, "deepskyblue")) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_BLUE, "deepskyblue")) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -822,8 +838,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-    scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -860,8 +876,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("blue", "deepskyblue")) + # manually colour plots if specified
-    scale_fill_manual(values = c("blue", "deepskyblue")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_BLUE, "deepskyblue")) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_BLUE, "deepskyblue")) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -887,8 +903,8 @@ for (j in 1:length(myvars)) {
     {if (myvars[j] == "Hrs50mLesDepRange") scale_y_continuous(limits = c(0, 24),
                                                               breaks = seq(from = 0, to = 24, by = 3),
                                                               labels = as.character(seq(from = 0, to = 24, by = 3)))} +
-    scale_colour_manual(values = c("red", "violetred2")) + # manually colour plots if specified
-    scale_fill_manual(values = c("red", "violetred2")) + # manually colour plots if specified
+    scale_colour_manual(values = c(CB_RED, "violetred2")) + # manually colour plots if specified
+    scale_fill_manual(values = c(CB_RED, "violetred2")) + # manually colour plots if specified
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                      title = element_text(size = rel(2)),
                                      legend.position = "none",
@@ -913,7 +929,7 @@ ppgHisto(x = AllDailies %>% filter(!is.na(MaxDepth24h), MarineZone == "GSL"),
          cutbreaks = c(0, 90, Inf), # vector of numeric breaks for colname variable bins
          cutlabels = c("0-90", "90-500"), # vector of bin names corresponding to cutbreaks, one fewer
          groupcol = Stock,
-         groupcolours = c("red", "blue")) +
+         groupcolours = c(CB_RED, CB_BLUE)) +
   ggsave(paste0(today(), "_ppgHisto_MaxDepth24h_90m.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 4,
          height = 3, units = "in", dpi = 300, limitsize = TRUE)
@@ -930,7 +946,7 @@ ppgHisto(x = AllDailies %>% filter(!is.na(speed_average), MarineZone == "MixingW
          cutbreaks = c(-Inf, 75, Inf), # vector of numeric breaks for colname variable bins
          cutlabels = c("<75", ">75"), # vector of bin names corresponding to cutbreaks, one fewer
          groupcol = Stock,
-         groupcolours = c("red", "blue")) +
+         groupcolours = c(CB_RED, CB_BLUE)) +
   ggsave(paste0(today(), "_ppgHisto_speed_average_75cms.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 4,
          height = 3, units = "in", dpi = 300, limitsize = TRUE)
@@ -943,7 +959,7 @@ ppgHisto(x = AllDailies %>% filter(!is.na(cyclonicAmp), MarineZone == "MixingW")
          cutbreaks = c(-Inf, -35, Inf), # vector of numeric breaks for colname variable bins
          cutlabels = c("<-35", ">-35"), # vector of bin names corresponding to cutbreaks, one fewer
          groupcol = Stock,
-         groupcolours = c("red", "blue")) +
+         groupcolours = c(CB_RED, CB_BLUE)) +
   ggsave(paste0(today(), "_ppgHisto_cyclonicAmp_-35cm.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 4,
          height = 3, units = "in", dpi = 300, limitsize = TRUE)
@@ -956,7 +972,7 @@ ppgHisto(x = AllDailies %>% filter(!is.na(EddySpeedAmp), MarineZone == "MixingW"
          cutbreaks = c(-Inf, -2625, Inf), # vector of numeric breaks for colname variable bins
          cutlabels = c("<-2625", ">-2625"), # vector of bin names corresponding to cutbreaks, one fewer
          groupcol = Stock,
-         groupcolours = c("red", "blue")) +
+         groupcolours = c(CB_RED, CB_BLUE)) +
   ggsave(paste0(today(), "_ppgHisto_EddySpeedAmp_-2625cms2.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 4,
          height = 3, units = "in", dpi = 300, limitsize = TRUE)
@@ -978,8 +994,8 @@ ggplot(AllDailies,
   geom_violin(aes(fill = Stock, colour = Stock)) +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, stroke = 2, colour = "white") +
   labs(y = "Fish Length (cm)") +
-  scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-  scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -993,8 +1009,8 @@ ggplot(AllDailies,
   geom_violin(aes(fill = Stock, colour = Stock)) +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, stroke = 2, colour = "white") +
   labs(y = "Fish Age (years)") +
-  scale_colour_manual(values = c("red", "blue")) + # manually colour plots if specified
-  scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -1006,7 +1022,7 @@ ggplot(AllDailies,
 
 
 
-# Fig 5/SM? ILD & dives thru####
+# Fig SM was 5 ILD & dives thru####
 saveloc = paste0(machine, "Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/boxplots/") #ensure trailing /slash
 
 ggplot(AllDailies %>% filter(MarineZone == "GSL"), aes(x = Stock, y = ild_dive_cnt_desc_gl_Sum)) +
@@ -1017,7 +1033,7 @@ ggplot(AllDailies %>% filter(MarineZone == "GSL"), aes(x = Stock, y = ild_dive_c
   labs(x = "Stock", y = "Daily ILD Dives") +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   scale_x_discrete(labels = c("GOM", "Med")) + # manually relabel to remove underscores
-  scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -1036,7 +1052,7 @@ ggplot(AllDailies %>% filter(MarineZone == "GSL"), aes(x = Stock, y = MeanILD24h
   labs(x = "Stock", y = "Intermediate layer depth (m)") +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   scale_x_discrete(labels = c("GOM", "Med")) + # manually relabel to remove underscores
-  scale_fill_manual(values = c("red", "blue")) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -1084,11 +1100,13 @@ northernmost <- AllDailies %>%
 arrivedGOM <- AllDailies %>%
   filter(Stock == "GOM", MarineZone == "GOM", Day > 274) %>%
   group_by(toppid2) %>%
-  summarise(min(Day, na.rm = T)) # day later than Oct, by eye on purple marinearea stock plots from above
+  summarise(arrivedGOMdate = min(Day, na.rm = T)) # day later than Oct, by eye on purple marinearea stock plots from above
+# By doing this in calendar years, fish that first arrive after Jan1 are excluded
+# Need to split years at 1 July
 
 names(leftGSL)[2] <- "leftGSLdate"
-names(arrivedGOM)[2] <- "arrivedGOMdate"
 names(northernmost)[3] <- "leftNorthdate"
+mean(arrivedGOM$arrivedGOMdate) # 341.5455
 
 GSLtoGOM <- left_join(leftGSL, arrivedGOM) %>% # Joining, by = "toppid2"
   drop_na(arrivedGOMdate) %>%
@@ -1146,6 +1164,13 @@ arrivedGOM2listDF <- as.data.frame(str_split_fixed(string = arrivedGOM2$toppid2,
 arrivedGOM2listDF[,2] <- as.numeric(arrivedGOM2listDF[,2])
 # arrivedGOM2listDF[,1] <- as.character(levels(arrivedGOM2listDF[,1]))[arrivedGOM2listDF[,1]]
 arrivedGOM2$toppid2 <- paste0(arrivedGOM2listDF[,1], "_", arrivedGOM2listDF[,2] - 1)
+# get mean GOM arrival date from arrivedGOM & arrivedGOM2. Need to account for yearday circularity
+# add 365 to arrivedGOM2 so numberline goes ...363,364,365,366,367,368... not 1,2,3,363,364,365
+# concatenate with arrivedGOM$arrivedGOMdate,
+# take mean & subtract 365
+mean(c((arrivedGOM2$arrivedGOMdate + 365), arrivedGOM$arrivedGOMdate)) - 365 # 22.67059
+
+
 GSLtoGOM2 %<>%
   left_join(arrivedGOM2) %>% # Joining, by = "toppid2"
   mutate(GSLtoGOMdays = arrivedGOMdate + (366 - leftGSLdate)) # n = 51
@@ -1177,6 +1202,7 @@ arrivedGSL <- AllDailies %>%
   filter(Stock == "GOM", MarineZone == "GSL") %>%
   group_by(toppid2) %>%
   summarise(min(Day, na.rm = T)) # n=63, values 170:301
+# could be the date of tagging within the GSL though!
 names(arrivedGSL)[2] <- "arrivedGSLdate"
 # last GOM day before that
 leftGOM <- AllDailies %>%
@@ -1187,6 +1213,42 @@ leftGOM <- AllDailies %>%
   summarise(max(Day, na.rm = T))
 names(leftGOM)[2] <- "leftGOMdate"
 # highest value is 181, v close to 182, surprising??
+# Leaving GOM means MarineZone == GOM on day 1, and MarineZone == CentralWAtl on day 2
+# Use RLE to find these. Or just use this process directly for GSL:
+# North-WAtl day 1, GSL day 2.
+# NB: the code in the succeeding section is horrible but I was coming down with a cold
+AllDailies$Index <- 1:nrow(AllDailies) # rebuild index post filtering at top
+GSLrle <- data.frame(unclass(rle(AllDailies$MarineZone)))
+GSLrle$cumlengths <- cumsum(GSLrle$lengths)
+GSLrle$valueslag <- c(GSLrle$values[2:length(GSLrle$values)], NA) # create lag column
+GSLrle$valueslagdate <- AllDailies$Date[GSLrle$cumlengths + 1] # add dates
+GSLrle$valueslagindex <- AllDailies$Index[GSLrle$cumlengths + 1] # add iNDEX
+GSLrle <- GSLrle[1:(nrow(GSLrle) - 1), ] # remove last row
+GSLrle %<>% unite("valuecombo", c(values, valueslag), remove = FALSE) # create combo column
+GSLrle %<>% filter(valuecombo == "ForageW_GSL")
+GSLrle$valuesindex <- GSLrle$valueslagindex - 1 # create lag column for index
+
+ADgslEntry <- AllDailies %>% # check: filter alldailies by those rows
+  select(Date, Stock, toppid, MarineZone, Index, Day) %>%
+  filter(Index %in% c(GSLrle$valuesindex, GSLrle$valueslagindex))
+# toppid pairs have to be the same
+ADgslEntry$toppidlag <- c(ADgslEntry$toppid[2:length(ADgslEntry$toppid)], NA) # create toppid lag column
+ADgslEntry$Datelag <- c(ADgslEntry$Date[2:length(ADgslEntry$Date)], NA) # create Date lag column
+ADgslEntry$Daylag <- c(ADgslEntry$Day[2:length(ADgslEntry$Day)], NA) # create Day lag column
+ADgslEntry$Indexlag <- c(ADgslEntry$Index[2:length(ADgslEntry$Index)], NA) # create Day lag column
+ADgslEntry %<>% filter(MarineZone == "ForageW") # remove even columns
+ADgslEntry %<>% select(Date, Datelag, Stock, toppid, toppidlag, Day, Daylag, Index, Indexlag) # tidy
+ADgslEntry$toppidmatch <- ADgslEntry$toppid == ADgslEntry$toppidlag # logical
+ADgslEntry %<>% filter(toppidmatch)
+ADgslEntry$daylagmatch <- ADgslEntry$Daylag == ADgslEntry$Day + 1 # logical
+# 3 daylagmatch are FALSE but their indexes are only 1 different so these are fine.
+mean(ADgslEntry$Daylag) # 238.8077 # 27th August
+# need to do this on a per-stock basis
+ADgslEntry %>%
+  group_by(Stock) %>%
+  summarise(MeanGSLentry = mean(Daylag)) # 239 for both. Check correct:
+# tmp <- ADgslEntry %>% filter(Stock == "Med")
+# mean(tmp$Daylag) # 238.5882 GOM, 239.2222 Med. Is correct.
 
 GOMtoGSL <- left_join(leftGOM, arrivedGSL) %>%
   drop_na(arrivedGSLdate) %>%
@@ -1385,14 +1447,22 @@ northernmostMed <- AllDailies %>%
 # arrived in Med that year
 arrivedMed <- AllDailies %>%
   filter(Stock == "Med",
-         Day > 274,
+         Day > 274, # why this constraint?
          MarineZone == "Med") %>%
   group_by(toppid2) %>%
-  summarise(min(Day, na.rm = T)) # day later than Oct, by eye on purple marinearea stock plots from above
+  summarise(arrivedMeddate = min(Day, na.rm = T)) # day later than Oct, by eye on purple marinearea stock plots from above
+
+arrivedMed <- AllDailies %>%
+  filter(Stock == "Med",
+         MarineZone == "Med") %>%
+  group_by(toppid2) %>%
+  summarise(arrivedMeddate = min(Day, na.rm = T)) # day later than Oct, by eye on purple marinearea stock plots from above
+mean(arrivedMed$arrivedMeddate) # 145.6364 = 25th May
 
 names(leftGSL)[2] <- "leftGSLdate"
-names(arrivedMed)[2] <- "arrivedMeddate"
 names(northernmostMed)[3] <- "leftNorthdate"
+
+
 GSLtoMed <- left_join(leftGSL, arrivedMed) %>% # joins on toppid2. 2020-11-25 no matches. leftgsl nrow 14 arrivedmed nrow 1.
   drop_na(arrivedMeddate) %>%
   mutate(GSLtoMeddays = arrivedMeddate - leftGSLdate)
@@ -1692,7 +1762,7 @@ ggplot(AllJourneys, aes(x = Direction, y = JourneyDays)) +
   labs(x = "Direction", y = "Journey Time, Days") +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
-  scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_RED, CB_BLUE, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -1723,7 +1793,7 @@ ggplot(AllJourneysNorth, aes(x = Direction, y = JourneyDays)) +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   scale_x_discrete(labels = c("North-GOM", "GOM-North", "North-Med", "Med-North")) + # manually relabel to remove underscores
   scale_y_continuous(limits = c(0,260), breaks = seq(0, 250, by = 50)) +
-  scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
+  scale_fill_manual(values = c(CB_RED, CB_RED, CB_BLUE, CB_BLUE)) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.position = "none",
@@ -1814,8 +1884,8 @@ ggplot(data = AllDailies,
                 colour = Stock)) +
   scale_x_discrete(labels = month.abb) +
   labs(x = "Month", y = "Distance From Shore, Km") +
-  scale_fill_manual(values = c("red", "blue")) +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.text = element_text(size = rel(1.5)),
@@ -1845,7 +1915,7 @@ mygroups <- c("ForageW_GOM", # mid blue
               "MixingW_Med", # purple
               "MixingE_Med", # darker purple
               "Med_Med") # red
-mycolours <- c("blue", "purple", "red", "blue", "blue3", "purple", "purple3", "red")
+mycolours <- c(CB_BLUE, "purple", CB_RED, CB_BLUE, "blue3", "purple", "purple3", CB_RED)
 names(mycolours) <- mygroups
 
 namevec <- vector() # blank repository
@@ -1890,7 +1960,7 @@ namevec <- paste0(mygroups, ":", namevec) # add group names to front of nrow num
 
 ggplot(ADtmp,
        aes(x = factor(MarineZoneStock, levels = mygroups),
-           y = as.Date(Day -1, origin = as.Date("2018-01-01")))) +
+           y = as.Date(Day - 1, origin = as.Date("2018-01-01")))) +
   geom_violin(aes(fill = MarineZoneStock, colour = MarineZoneStock), position = "identity") +
   scale_fill_manual(values = mycolours) +
   scale_colour_manual(values = mycolours) +
@@ -1933,7 +2003,7 @@ ggplot(data = AllDailies,
              aes(xintercept = grp.mean,
                  color = Stock),
              linetype = "dashed") +
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
                                    legend.text = element_text(size = rel(1.5)),
@@ -1951,7 +2021,7 @@ ggplot(data = AllDailies,
 
 
 
-# 2021-06-15 EA area propn by month lineplots####
+# 2021-06-15 EA area propn by month lineplots FIGURE 5####
 # Connects S-T fishing to time. Clean takeaway.
 
 # xaxis: thru the year (monthly e.g.)
@@ -1963,27 +2033,27 @@ ggplot(data = AllDailies,
 # & S of ~35N?
 
 # make table of data, summary
-plottable <- AllDailies %>%
-  mutate(LinesArea = factor(
-    case_when(
-      between(lon, -70, -55) & between(lat, 45, 51) ~ "GSL",
-      between(lon, -75, -65) & between(lat, 39.3, 46) ~ "GoMaine",
-      between(lon, -65, -55) & between(lat, 39.3, 46) & MarineZone != "GSL" ~ "Nova Scotia",
-      lon > -55 & between(lat, 39.3, 46) ~ "N Atlantic Offshore",
-      between(lon, -79, -73) & between(lat, 31, 36) ~ "W.Mix Hotspot",
-      lat < 35 & MarineZone != "GOM" ~ "Hatteras Offshore", #  !& (between(lon, -79, -73) & between(lat, 31, 36))
-      TRUE ~ NA_character_), # TRUE for all other oldcolvals not specified above
-    # levels = c("GSL", "GoMaine", "Nova Scotia", "N.N.Atl", "W.Mix Hotspot", "S.N.Atl"))) %>%
-    levels = c("GSL", "Nova Scotia", "GoMaine", "N Atlantic Offshore", "W.Mix Hotspot", "Hatteras Offshore"))) %>%
-  drop_na(LinesArea) %>%
-  group_by(LinesArea, Stock, Month) %>%
-  distinct() %>%
-  # summarise(NFishdays = n()) # raw fishdays initially
-  summarise(NFishdays = n()) %>% # raw fishdays initially
-  mutate(CorrValue = case_when(
-    Stock == "GOM" ~ 78,
-    Stock == "Med" ~ 42),
-    NFishdaysCorr = NFishdays / CorrValue)
+# plottable <- AllDailies %>%
+#   mutate(LinesArea = factor(
+#     case_when(
+#       between(lon, -70, -55) & between(lat, 45, 51) ~ "GSL",
+#       between(lon, -75, -65) & between(lat, 39.3, 46) ~ "GoMaine",
+#       between(lon, -65, -55) & between(lat, 39.3, 46) & MarineZone != "GSL" ~ "Nova Scotia",
+#       lon > -55 & between(lat, 39.3, 46) ~ "N Atlantic Offshore",
+#       between(lon, -79, -73) & between(lat, 31, 36) ~ "W.Mix Hotspot",
+#       lat < 35 & MarineZone != "GOM" ~ "Hatteras Offshore", #  !& (between(lon, -79, -73) & between(lat, 31, 36))
+#       TRUE ~ NA_character_), # TRUE for all other oldcolvals not specified above
+#     # levels = c("GSL", "GoMaine", "Nova Scotia", "N.N.Atl", "W.Mix Hotspot", "S.N.Atl"))) %>%
+#     levels = c("GSL", "Nova Scotia", "GoMaine", "N Atlantic Offshore", "W.Mix Hotspot", "Hatteras Offshore"))) %>%
+#   drop_na(LinesArea) %>%
+#   group_by(LinesArea, Stock, Month) %>%
+#   distinct() %>%
+#   # summarise(NFishdays = n()) # raw fishdays initially
+#   summarise(NFishdays = n()) %>% # raw fishdays initially
+#   mutate(CorrValue = case_when(
+#     Stock == "GOM" ~ 78,
+#     Stock == "Med" ~ 42),
+#     NFishdaysCorr = NFishdays / CorrValue)
 
 # make table of data, summary - normal zones
 plottable <- AllDailies %>%
@@ -2002,15 +2072,14 @@ plottable <- AllDailies %>%
     Stock == "Med" ~ 42),
     NFishdaysCorr = NFishdays / CorrValue)
 
-unique(plottable$LinesArea)
-unique(AllDailies$MarineZone)
-
-AllDailies %>%
-  select(Stock, toppid) %>%
-  group_by(Stock, toppid) %>%
-  distinct() %>%
-  group_by(Stock) %>%
-  summarise(n = n())
+# unique(plottable$LinesArea)
+# unique(AllDailies$MarineZone)
+# AllDailies %>%
+#   select(Stock, toppid) %>%
+#   group_by(Stock, toppid) %>%
+#   distinct() %>%
+#   group_by(Stock) %>%
+#   summarise(n = n())
 
 saveloc = paste0(machine, "Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/")
 
@@ -2018,7 +2087,7 @@ ggplot(data = plottable,
        aes(x = Month, y = NFishdaysCorr, fill = Stock, colour = Stock)) +
   facet_wrap(.~LinesArea, ncol = 1) +
   geom_line(aes(colour = Stock), size = 0.5) + # , col = toppid # , group = toppid
-  scale_colour_manual(values = c("red", "blue")) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
   scale_x_discrete(breaks = 1:12,
                    limits = 1:12,
                    labels = str_sub(month.abb, 1, 1),
@@ -2037,9 +2106,6 @@ ggplot(data = plottable,
   ggsave(paste0(saveloc, today(), "_xMonth_yFishdaysCorr_colStock_facetRegion.png"),
          plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
          height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
-
-
-
 
 
 
@@ -2217,7 +2283,7 @@ resultsdf <- wmwbrute(df = AllDailies %>%
                       groupcol = "Stock",
                       violinplots = TRUE,
                       membersonly = c("GOM", "Med"),
-                      membercolours = c("red", "blue"))
+                      membercolours = c(CB_RED, CB_BLUE))
 # results saved in folder
 
 # MEANS
@@ -2294,7 +2360,7 @@ ggplot(Med, aes(x = factor(depthbins), y = ExtTemp.C.)) +
   geom_boxplot(aes(fill = Stock), colour = "black", notch = F, position = position_dodge(preserve = "single")) +
   # scale_y_continuous(limits = c(0, round(max(shark$PCL, na.rm = T), -2)),
   #                    breaks = seq(from = 0, to = round(max(shark$PCL, na.rm = T), -2), by = 50)) +
-  scale_fill_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
   labs(x = "Depth (m)") +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2.5)),
                                    # axis.title.x = element_text(vjust = -2), # move x axis label down a bit
@@ -2693,7 +2759,7 @@ saveloc <- "/home/simon/Documents/Si Work/Blocklab/abft_diving/X_PlotsMisc/AgeLo
 #                aes(xintercept = grp.mean,
 #                    color = Stock),
 #                linetype = "dashed") +
-#     scale_colour_manual(values = c("red", "blue"),
+#     scale_colour_manual(values = c(CB_RED, CB_BLUE),
 #                         guide = guide_legend(direction = "vertical")) +
 #     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
 #                                      title = element_text(size = rel(2)),
@@ -3243,7 +3309,7 @@ ggplot(data = AllDailies,
              aes(xintercept = grp.mean,
                  color = Stock),
              linetype = "dashed") +
-  scale_colour_manual(values = c("violetred2", "deepskyblue", "red", "blue", "black"),
+  scale_colour_manual(values = c("violetred2", "deepskyblue", CB_RED, CB_BLUE, "black"),
                       guide = guide_legend(direction = "vertical")) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -3278,7 +3344,7 @@ ggplot(data = dur,
              aes(xintercept = grp.mean,
                  color = Stock),
              linetype = "dashed") +
-  scale_colour_manual(values = c("violetred2", "deepskyblue", "red", "blue", "black"),
+  scale_colour_manual(values = c("violetred2", "deepskyblue", CB_RED, CB_BLUE, "black"),
                       guide = guide_legend(direction = "vertical")) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -3309,7 +3375,7 @@ ggplot(data = dur,
              aes(xintercept = grp.mean,
                  color = Stock),
              linetype = "dashed") +
-  scale_colour_manual(values = c("violetred2", "deepskyblue", "red", "blue", "black"),
+  scale_colour_manual(values = c("violetred2", "deepskyblue", CB_RED, CB_BLUE, "black"),
                       guide = guide_legend(direction = "vertical")) +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
                                    title = element_text(size = rel(2)),
@@ -3379,7 +3445,7 @@ ggplot() +
         panel.background = element_rect(fill = "white", colour = "grey50"), # white background
         legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
   guides(col = guide_legend(nrow = 4, override.aes = list(size = 0.9))) + # rows for legend, thickness of lines (not relative to 1)
-  scale_colour_manual(values = c("red", "black")) + # , "blue", "black"
+  scale_colour_manual(values = c(CB_RED, "black")) + # , CB_BLUE, "black"
   scale_x_continuous(breaks = seq(-180, 180, by = 10)) + # sets x ticks frequency
   ggtitle(paste0("ABFT tracks, GOM vs algorithm-assigned GOM fish; western-tagged"), # stock and E/W Atlantic tag location
           subtitle = paste0("GOM n=", sf_lines %>% filter(Stock == "GOM") %>% pull(toppid) %>% unique %>% length,
@@ -3415,7 +3481,7 @@ ggplot() +
         panel.background = element_rect(fill = "white", colour = "grey50"), # white background
         legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
   guides(col = guide_legend(nrow = 4, override.aes = list(size = 0.9))) + # rows for legend, thickness of lines (not relative to 1)
-  scale_colour_manual(values = c("blue", "black")) +
+  scale_colour_manual(values = c(CB_BLUE, "black")) +
   scale_x_continuous(breaks = seq(-180, 180, by = 10)) + # sets x ticks frequency
   ggtitle(paste0("ABFT tracks, Med vs algorithm-assigned Med fish; western-tagged"), # stock and E/W Atlantic tag location
           subtitle = paste0("Med n=", sf_lines %>% filter(Stock == "Med") %>% pull(toppid) %>% unique %>% length,
@@ -3425,7 +3491,7 @@ ggplot() +
          height = 3, units = "in", dpi = 300, limitsize = TRUE)
 
 
-# track lines coloured by TotalScore ####
+# track lines coloured by TotalScore FIGURE 10####
 UNKextents <- sf::st_as_sf(data.frame(lon = c(-82, -6), #set manual extents to force the same map size each time
                                       lat = c(10,65)),
                            coords = c("lon","lat")) %>%
