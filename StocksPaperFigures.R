@@ -32,11 +32,11 @@ AllDailies <- readRDS(paste0(loadloc, "AllDailies_HIFSDA_Stocknames_StocksPaperV
 # 3 instances within script, but input data likely already filtered this way.
 
 # AllDailies %>%
-#   + group_by(Stock) %>%
-#   + summarise(toppids = length(unique(toppid)))
-# Stock toppids
-# GOM        78
-# Med        42
+#   group_by(Stock) %>%
+#   summarise(toppids = length(unique(toppid)))
+# # Stock toppids
+# # GOM        78 # 2022-08-02 seem to have lost 2 GOM fish, n=76?!
+# # Med        42
 
 AllDailies %>%
   group_by(toppid) %>%
@@ -2111,6 +2111,8 @@ ggplot(data = plottable,
 
 
 # Stats: T-tests for all GOM/Med pairs####
+# Make this into a function for future bruteforcing
+# my misc scripts, ttest_brute.R
 saveloc = "/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/"
 # Are means different, GOM vs Med stocks?
 # Areas: GSL, ForageW, MixingW, MixingWhotspot, GOM vs Med SGs
@@ -2122,6 +2124,8 @@ myvariables <- c("MeanDepth24h", "MaxDepth24h", "OceanDepth", "MeanETemp24h", "M
 resultsDF <- as.data.frame(matrix(nrow = length(myvariables),
                                   ncol = length(myareas),
                                   dimnames = list(myvariables, myareas)))
+resultsDFt <- resultsDF
+resultsDFdf <- resultsDF
 resultsDFsig <- resultsDF
 resultsDFn <- resultsDF
 
@@ -2134,6 +2138,8 @@ shapiroDF <- as.data.frame(matrix(nrow = length(myvariables),
                                   dimnames = list(myvariables, shapiroDF)))
 shapiroNormal <- shapiroDF
 shapiroN <- shapiroDF
+resultsMeans <- shapiroDF
+resultsSDs <- shapiroDF
 
 for (i in myareas) { # i <- myareas[1]
   for (j in myvariables) { # j <- myvariables[1]
@@ -2172,10 +2178,37 @@ for (i in myareas) { # i <- myareas[1]
                   var.equal = FALSE, # default. Uses Welch's t-test
                   conf.level = 0.95) # default
     resultsDF[j, i] <- tmp$p.value
+    resultsDFt[j, i] <- tmp$statistic[[1]] # t statistic
+    resultsDFdf[j, i] <- tmp$parameter[[1]] # degrees of freedom
     if (between(tmp$p.value, 0.01, 0.05)) resultsDFsig[j, i] <- "*" # <0.05
     if (between(tmp$p.value, 0.001, 0.01)) resultsDFsig[j, i] <- "**" # < 0.01
     if (tmp$p.value < 0.001) resultsDFsig[j, i] <- "***" # < 0.001
     rm(tmp) # prevents using this value in future loops in case there's an error for that future loop
+    # report results in text, per https://www.scribbr.com/statistics/t-test/
+    # paste0("The difference in ",
+    #        j, # variable name
+    #        " between ",
+    #        "GOM", # group name 1, to be param in function
+    #        " (Mean = ",
+    #        1.46, # group 1 mean
+    #        ", SD = ",
+    #        0.206, # group 1 sd
+    #        ") and ",
+    #        "Med", # group name 2, to be param in function
+    #        " (Mean = ",
+    #        5.54, # group 2 mean
+    #        ", SD = ",
+    #        0.569, # group 2 sd
+    #        ") was ",
+    #        if (tmp3 >= 0.05) "not ", # significant / not significant
+    #        "significant (t = ",
+    #        round(tmp$statistic[[1]], digits = 4),  # t statistic
+    #        ", p < ",
+    #        round(tmp$p.value, digits = 4), # p statistic
+    #        ", df = ",
+    #        round(tmp$parameter[[1]], digits = 0), # degrees of freedom
+    #        ")."
+    #        )
 
     myx <- myx %>% pull # removes vector from tibble
     myx <- myx[!is.na(myx)]
@@ -2186,39 +2219,49 @@ for (i in myareas) { # i <- myareas[1]
 
     ggpubr::ggqqplot(data = myx, title = paste(paste0("Region: ", i),
                                                paste0("Variable: ", j),
-                                               "Stock: GOM", sep = "\n")) +
-      ggsave(paste0(saveloc, today(), "_QQPlot_", i, "_", j, "_GOM.png"), # WATL TAG FILTER _WatlTagged
-             plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
-             height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
+                                               "Stock: GOM", sep = "\n"))
+    ggsave(paste0(saveloc, today(), "_QQPlot_", i, "_", j, "_GOM.png"), # WATL TAG FILTER _WatlTagged
+           plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
+           height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
 
     myy <- myy %>% pull
     myy <- myy[!is.na(myy)]
     if (length(myy) > 5000) myy <- sample(x = myy, size = 5000)
     shapiro <- shapiro.test(myy)
-    shapiro$p.value # 3.290644e-66
+    # shapiro$p.value # 3.290644e-66
     shapiroDF[j, paste0(i, "_Med")] <- shapiro$p.value
     shapiroNormal[j, paste0(i, "_Med")] <- ifelse(shapiro$p.value > 0.05, TRUE, FALSE) # p-value > 0.05 = is normal
 
     ggpubr::ggqqplot(data = myy, title = paste(paste0("Region: ", i),
                                                paste0("Variable: ", j),
-                                               "Stock: Med", sep = "\n")) +
-      ggsave(paste0(saveloc, today(), "_QQPlot_", i, "_", j, "_Med.png"), # WATL TAG FILTER _WatlTagged
-             plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
-             height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
+                                               "Stock: Med", sep = "\n"))
+    ggsave(paste0(saveloc, today(), "_QQPlot_", i, "_", j, "_Med.png"), # WATL TAG FILTER _WatlTagged
+           plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8/3,
+           height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
 
     resultsDFn[j, i] <- length(myx) + length(myy)
     shapiroN[j, paste0(i, "_GOM")] <- length(myx)
     shapiroN[j, paste0(i, "_Med")] <- length(myy)
+    resultsMeans[j, paste0(i, "_GOM")] <- mean(myx, na.rm = TRUE)
+    resultsMeans[j, paste0(i, "_Med")] <- mean(myy, na.rm = TRUE)
+    resultsSDs[j, paste0(i, "_GOM")] <- sd(myx, na.rm = TRUE)
+    resultsSDs[j, paste0(i, "_Med")] <- sd(myy, na.rm = TRUE)
 
   } # close j myvariables
 } #  close i myareas
 write.csv(resultsDF, paste0(saveloc, "ttestPvalues.csv"))
+write.csv(resultsDFt, paste0(saveloc, "ttestTvalues.csv"))
+write.csv(resultsDFdf, paste0(saveloc, "ttestDFvalues.csv"))
 write.csv(resultsDFsig, paste0(saveloc, "ttestPvaluesSig.csv"))
 write.csv(shapiroDF, paste0(saveloc, "shapiroDF.csv"))
 write.csv(shapiroNormal, paste0(saveloc, "shapiroNormal.csv"))
 write.csv(resultsDFn, paste0(saveloc, "ttestTotalN.csv"))
 write.csv(shapiroN, paste0(saveloc, "ttestGroupNs.csv"))
+write.csv(resultsMeans, paste0(saveloc, "groupMeans.csv"))
+write.csv(resultsSDs, paste0(saveloc, "groupSDs.csv"))
 
+
+# MixingW hotspot subset
 myareas <- c("GOM", "Med")
 myvariables <- c("MeanDepth24h", "MaxDepth24h", "OceanDepth", "MeanETemp24h", "MinETemp24h", "li5day", "speed_average", "cyclonicAmp",
                  "EddySpeedAmp", "DistanceToShoreKm", "lat", "Hrs50mLesDepRange", "SurfFreq24h", "StepLengthBL", "ild_dive_cnt_desc_gl_Sum")
@@ -2374,6 +2417,35 @@ ggplot(Med, aes(x = factor(depthbins), y = ExtTemp.C.)) +
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
 
+# 2022-02-12 Tag month GSL ####
+deploy %<>% # remove dupes
+  group_by(toppid) %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE),
+            across(where(~ is.character(.) | is.POSIXt(.) | is.Date(.)), first)) %>% # library(lubridate)
+  mutate(across(where(is.numeric), ~ ifelse(is.nan(.), NA, .)), #convert NaN to NA. POSIX needs lubridate
+         across(where(~ is.character(.)), ~ ifelse(is.nan(.), NA, .))) %>% # https://community.rstudio.com/t/why-does-tidyrs-fill-work-with-nas-but-not-nans/25506/5
+  ungroup
+
+
+deploy %>%
+  filter(toppid %in% unique(AllDailies$toppid), #only our fish
+         str_detect(seriesname, "Canada")) %>% # only Canada tagging, GSL
+  mutate(Month = month(taggingdate)) %>%
+  summarise(MonthMin = min(Month, na.rm = TRUE), # 9
+            MonthMax = max(Month, na.rm = TRUE)) # 11
+
+deploy %>%
+  filter(toppid %in% unique(AllDailies$toppid)) %>% # just our fish
+  left_join(AllDailies %>% # reduce alldailies to just toppid & stock, no dupes
+              select(toppid, Stock) %>%
+              group_by(toppid) %>%
+              summarise(Stock = first(Stock))) %>%
+  group_by(Stock) %>%
+  summarise(N = length(toppid),
+            MeanCFL = mean(as.numeric(len1), na.rm = TRUE),
+            SDCFL = sd(as.numeric(len1), na.rm = TRUE),
+            MeanAge = mean(deployage, na.rm = TRUE),
+            SDAge = sd(deployage, na.rm = TRUE))
 
 
 # Data summary table TO COMPLETE####
@@ -2582,7 +2654,9 @@ setDT(allfishtable)
 allfishtable[doubletagbind, on = c("toppid"), Tag_Type := i.Tag_Type]
 allfishtable[doubletagbind, on = c("toppid"), Tag_Model := i.Tag_Model]
 setDF(allfishtable)
-write.csv(allfishtable, "/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/AllFishUsedInPaperTable.csv",row.names = F)
+write.csv(allfishtable,
+          "/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/AllFishUsedInPaperTable.csv",
+          row.names = F)
 
 
 # Probabilistic Assignment ####
@@ -2735,8 +2809,25 @@ report %<>% left_join(AllDailies %>%
 # Create means for skill testing
 reportmeans <- report %>%
   group_by(Stock) %>%
-  summarise_all(mean, na.rm = T) %>%
+  summarise_all(mean, na.rm = T) %>% # toppid column is nonsense due to this but is ignored; should remove
   ungroup
+
+# need to do this per fish to avoid individuals being included in their own means
+reportmeans <- as.data.frame(matrix(data = as.numeric(NA),
+                                    nrow = length(unique(AllDailies$toppid)) * 2,
+                                    ncol = 28,
+                                    dimnames = list(1:(length(unique(AllDailies$toppid)) * 2),
+                                                    colnames(report))))
+reportmeans$toppid <- rep(unique(AllDailies$toppid), each = 2) # populate toppid as index for loop
+
+for (i in unique(AllDailies$toppid)) { # i <- unique(AllDailies$toppid)[1]
+  reportmeans[reportmeans$toppid %in% i, ] <- report %>%
+    filter(!toppid %in% i) %>%
+    group_by(Stock) %>%
+    summarise_all(mean, na.rm = T) %>% # toppid column is nonsense due to this but is ignored; should remove
+    ungroup %>%
+    mutate(toppid = c(i, i)) # replace mean toppid with i
+}
 
 # instead of just means, get distributions, create threshold limits, if UNK values fall outside of thresholds then discard.
 saveloc <- "/home/simon/Documents/Si Work/Blocklab/abft_diving/X_PlotsMisc/AgeLonStocksPlot/SM_ProbAssign/"
@@ -2774,30 +2865,39 @@ saveloc <- "/home/simon/Documents/Si Work/Blocklab/abft_diving/X_PlotsMisc/AgeLo
 #            height = 4/2, units = "in", dpi = 300, limitsize = TRUE)
 # }
 
-results <- list() # create blank list for outputs
-reportmeanslong <- bind_cols(reportmeans %>%
-                               filter(Stock == "GOM") %>%
-                               gather(Key, GOM) %>% # convert reportmeans to long format from wide. Should use pivot_longer but gather works
-                               select(GOM),
-                             reportmeans %>%
-                               filter(Stock == "Med") %>%
-                               gather(Key, Med) %>%
-                               select(Med))
+reportmeanslongB <- bind_cols(reportmeans %>%
+                                filter(Stock == "GOM") %>%
+                                gather(Key, GOM) %>% # convert reportmeans to long format from wide. Should use pivot_longer but gather works
+                                select(GOM),
+                              reportmeans %>%
+                                filter(Stock == "Med") %>%
+                                gather(Key, Med) %>%
+                                select(Med))
 
-reportmeanslongsave <- as.data.frame(reportmeanslong[3:28,])
-rownames(reportmeanslongsave) <- colnames(report)[3:28]
-write.csv(reportmeanslongsave, paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_AssignedFishMeansLong.csv"), row.names = T)
-reportmeanslong <- read_csv(paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_AssignedFishMeansLong.csv"))
+# reportmeanslongsave <- as.data.frame(reportmeanslong[3:28,])
+# rownames(reportmeanslongsave) <- colnames(report)[3:28]
+# write.csv(reportmeanslongsave, paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_AssignedFishMeansLong.csv"), row.names = T)
+# reportmeanslong <- read_csv(paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_AssignedFishMeansLong.csv"))
 
 # Loop through fish, test values against means
-for (i in unique(AllDailies$toppid)) {
+results <- list() # create blank list for outputs
+for (i in unique(AllDailies$toppid)) { # i <- unique(AllDailies$toppid)[1]
   results[[which(unique(AllDailies$toppid) %in% i)]] <- report %>%
     filter(toppid == i) %>%
     gather(Key, Value) %>% # report is df, gather works
-    bind_cols(bind_rows(data.frame(X1 = as.character(c(NA, NA)), # need to add 2 dummy rows at the start of reportmeanslong to make it the same nrow as gathered report
-                                   GOM = as.numeric(c(NA, NA)),
-                                   Med = as.numeric(c(NA, NA))),
-                        reportmeanslong)) %>%
+    # bind_cols(bind_rows(data.frame(X1 = as.character(c(NA, NA)), # need to add 2 dummy rows at the start of reportmeanslong to make it the same nrow as gathered report
+    #                                GOM = as.character(c(NA, NA)),
+    #                                Med = as.character(c(NA, NA))),
+    #                     reportmeanslong)) %>%
+    # bind_cols(reportmeanslong) %>% # need to do for individual reportmeanslong's
+    bind_cols(reportmeans %>%
+                filter(Stock == "GOM", toppid == i) %>%
+                gather(Key, GOM) %>% # convert reportmeans to long format from wide. Should use pivot_longer but gather works
+                select(GOM),
+              reportmeans %>%
+                filter(Stock == "Med", toppid == i) %>%
+                gather(Key, Med) %>%
+                select(Med)) %>%
     mutate(Stock = first(Value),
            toppid = Value[2]) %>%
     select(toppid, Stock, everything()) %>%
@@ -2845,8 +2945,13 @@ results %<>%
   mutate(toppid = as.numeric(toppid))
 
 # save intermediary result for later
-write.csv(results, paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_AssignedFishAllScores.csv"), row.names = F)
+write.csv(results,
+          paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/",
+                 today(),
+                 "_ProbabilityAssignmentResults_AssignedFishAllScores.csv"),
+          row.names = F)
 
+# collapse into per-fish results
 results %<>%
   group_by(toppid) %>% # summarise table, per fish: toppid, stock, med score, gom score, which.max, success/fail?
   summarise(Stock = first(Stock),
@@ -3118,7 +3223,7 @@ resultsUnk %<>%
   mutate(toppid = as.numeric(toppid))
 
 write.csv(resultsUnk, paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_UnAssignedFishAllScores.csv"), row.names = F)
-resultsUnk <- read_csv(paste0("/home/simon/Dropbox/Blocklab Monterey/Data/HomeRangeChange/", today(), "_ProbabilityAssignmentResults_UnAssignedFishAllScores.csv"))
+resultsUnk <- read_csv(paste0("/home/simon/Documents/Si Work/Blocklab/Data/HomeRangeChange/", "2020-11-30", "_ProbabilityAssignmentResults_UnAssignedFishAllScores.csv"))
 
 resultsUnk %<>%
   group_by(toppid) %>% # summarise table, per fish: toppid, stock, med score, gom score, which.max, success/fail?
@@ -3290,6 +3395,249 @@ confmat$table
 #    Detection Prevalence : 0.5400
 #       Balanced Accuracy : 0.6377
 #        'Positive' Class : GOM
+
+
+# 2023-02-02 influence of tests to final assignment by group/region####
+resultsUnk <- read_csv(paste0("/home/simon/Documents/Si Work/Blocklab/Data/HomeRangeChange/", "2020-11-30", "_ProbabilityAssignmentResults_UnAssignedFishAllScores.csv")) %>%
+  rename(TestResultStock = GomMed)
+# Given how few tests each fish passes, there must be a lot of variance in how many of the 26 contribute meaningfully.
+# Would it work to summarize that for each region?
+# E.g., "The GSL depth tests contributed to 23% of stock assignments in the PA, while the spatial range test was comparatively unimportant (1.3%)"
+reportUnk <- read_csv(paste0("/home/simon/Documents/Si Work/Blocklab/Data/HomeRangeChange/", "2020-11-30", "_ProbabilityAssignmentResults_UnknownFish.csv")) %>%
+  select(toppid, GomMed) %>%
+  rename(FinalAssignment = GomMed) %>%
+  filter(!is.na(FinalAssignment)) # remove unassigned
+# Add a regional column, populate based on "Key"; case_when.
+# Any other columns, or not regional column but TestType, to allow for other types e.g. spatial, temporal?
+# Assess test types/criteria and decide.
+
+# Lat_o_50
+# Lon_o_55W
+# Lon_u_80.2W
+# GSL_MinEtemp_u_0
+# GSL_MaxDepth_oe_90
+# GSL_MeanEtemp_u_9
+# NWF_MaxDepth_o_900
+# NWF_Hrs50_e_24
+# NWF_DST_o_800
+# NWF_OcDep_o_5275
+# WM_Hrs50_u_9
+# WM_StepL_o_600k
+# WM_DST_o_1600
+# WM_Lat_u_30N
+# June_MarZ_e_GSL
+# JunJul_MWH
+# May_NWF
+# JND_WM_DST_o_500
+# ND_NWF_DST_o_500
+# Length_o_250
+# Jan_NWF_Maine
+# Apr_Hatteras
+# JO_CCod
+# JA_GSL_StLR
+# SO_GSL_PtHood
+# Sept_GSL_Anticosti
+
+
+resultsUnk %<>%
+  # regions: GSL (8), NWAtl (NWF: 10), CWatl (WM: 7)
+  mutate(Region = case_when(str_detect(X1, "GSL") ~ "GSL",
+                            str_detect(X1, "NWF|CCod|Lat_o_50") ~ "NWAtl",
+                            str_detect(X1, "WM|MWH|Hatteras") ~ "CWatl",
+                            TRUE ~ NA_character_),
+         # size (1), temp (2), DST (4), ocean depth (2), max depth (2), step length (1)
+         TestType = case_when(str_detect(X1, "Length_o_250") ~ "Size",
+                              str_detect(X1, "Etemp") ~ "Temp",
+                              str_detect(X1, "DST") ~ "DistShore",
+                              str_detect(X1, "OcDep") ~ "OcDep",
+                              str_detect(X1, "MaxDepth") ~ "MaxDep",
+                              str_detect(X1, "StepL") ~ "StepLen",
+                              TRUE ~ NA_character_)
+  ) %>%
+  left_join(reportUnk) %>%
+  # "Contributed" = "test result = final fish stock assignment", or simply "not NA"?
+  #  If the former, need to read in another csv to find out the assignment status of each fish
+  # TestResultStock = FinalAssignment
+  mutate(TestInfluencedResult = case_when(TestResultStock == FinalAssignment ~ TRUE,
+                                          TRUE ~ FALSE)) %>%
+  # only need to count those that were influential
+  filter(TestInfluencedResult) %>%
+  # remove unhelful clutter columns
+  select(toppid, Key, TestResultStock:FinalAssignment)
+
+# Stats for percentages
+ntestscores <- resultsUnk %>% nrow()
+ntestscoresGOM <- resultsUnk %>% filter(FinalAssignment == "GOM") %>% nrow()
+ntestscoresMed <- resultsUnk %>% filter(FinalAssignment == "Med") %>% nrow()
+
+# Then how many tests matched the assignment GomMed (/26)? Per Region & TestType & by Stock
+resultsUnk %>%
+  group_by(Region) %>%
+  summarise(n = n(),
+            Pct = (n()/ntestscores)*100)
+# Region     n   Pct
+# CWatl     94  24.7
+# GSL       48  12.6
+# NWAtl    164  43.2
+# NA        74  19.5
+
+resultsUnk %>%
+  group_by(FinalAssignment, Region) %>%
+  summarise(n = n(),
+            GOMPct = (n()/ntestscoresGOM)*100,
+            MedPct = (n()/ntestscoresMed)*100)
+# FinalAssignment Region     n GOMPct MedPct
+# GOM             CWatl     68  41.0
+# GOM             GSL       41  24.7
+# GOM             NWAtl      9  5.42
+# GOM             NA        48  28.9
+# Med             CWatl     26         12.1
+# Med             GSL        7         3.27
+# Med             NWAtl    155         72.4
+# Med             NA        26         12.1
+
+resultsUnk %>%
+  group_by(TestType) %>%
+  summarise(n = n(),
+            Pct = (n()/ntestscores)*100)
+# TestType        n   Pct
+# DistToShore    58 15.3
+# MaxDepth        4  1.05
+# OceanDepth     12  3.16
+# Size           32  8.42
+# StepLength      7  1.84
+# Temperature     5  1.32
+# NA            262 68.9
+
+resultsUnk %>%
+  group_by(FinalAssignment, TestType) %>%
+  summarise(n = n())
+# FinalAssignment TestType        n
+# GOM             DistToShore    23
+# GOM             MaxDepth        2
+# GOM             Size           32
+# GOM             StepLength      7
+# GOM             NA            102
+# Med             DistToShore    35
+# Med             MaxDepth        2
+# Med             OceanDepth     12
+# Med             Temperature     5
+# Med             NA            160
+
+# Plot: column plot, group = stock, x = region, y = n
+saveloc <- "/home/simon/Dropbox/Blocklab Monterey/Papers/StocksPaper/Figures/"
+
+ggplot(resultsUnk %>%
+         filter(!is.na(Region)) |>
+         mutate(Region = ordered(Region, levels = c("GSL", "NWAtl", "CWatl"))),
+       aes(x = Region,
+           colour = FinalAssignment,
+           fill = FinalAssignment)) +
+  geom_bar(position = "dodge") +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE),
+                      guide = guide_legend(direction = "vertical")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE),
+                    guide = guide_legend(direction = "vertical")) +
+  labs(y = "Number of tests influenced") +
+  theme_minimal() %+replace% theme(
+    axis.text = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(saveloc, today(), "_Ntests_region_bars.png"),
+       plot = last_plot(), device = "png", path = "",
+       scale = 2, # changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 8, # NA default. Manually adjust plot box in RStudio after ggplot()
+       height = 6, # NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", # c("in", "cm", "mm"); 6.32x4, tweak as necessary. Removes canvas whitespace
+       dpi = 300, limitsize = TRUE
+)
+
+
+# Plot: column plot, group = stock, x = test type, y = n
+ggplot(resultsUnk %>% filter(!is.na(TestType)) |>
+         mutate(TestType = ordered(TestType, levels = c("Size", "StepLen", "DistShore", "OcDep", "MaxDep", "Temp")),
+                Region = ordered(Region, levels = c("GSL", "NWAtl", "CWatl"))),
+       aes(x = TestType,
+           colour = FinalAssignment,
+           fill = FinalAssignment)) +
+  geom_bar(position = "dodge") +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE),
+                      guide = guide_legend(direction = "vertical")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE),
+                    guide = guide_legend(direction = "vertical")) +
+  labs(y = "Number of tests influenced") +
+  theme_minimal() %+replace% theme(
+    axis.text = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(saveloc, today(), "_Ntests_testType_bars.png"),
+       plot = last_plot(), device = "png", path = "",
+       scale = 2, # changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 8, # NA default. Manually adjust plot box in RStudio after ggplot()
+       height = 6, # NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", # c("in", "cm", "mm"); 6.32x4, tweak as necessary. Removes canvas whitespace
+       dpi = 300, limitsize = TRUE
+)
+
+# Plot: column plot, group = stock, x = test type, y = n, facet region
+ggplot(resultsUnk %>% filter(!is.na(TestType),
+                             !is.na(Region)) |> # ,!is.na(Region)
+         mutate(TestType = ordered(TestType, levels = c("Size", "StepLen", "DistShore", "OcDep", "MaxDep", "Temp")),
+                Region = ordered(Region, levels = c("GSL", "NWAtl", "CWatl", NA))),
+       aes(x = TestType,
+           colour = FinalAssignment,
+           fill = FinalAssignment)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(vars(Region)) +
+  scale_colour_manual(values = c(CB_RED, CB_BLUE),
+                      guide = guide_legend(direction = "vertical")) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE),
+                    guide = guide_legend(direction = "vertical")) +
+  scale_y_continuous(limits = c(0, 35)) +
+  labs(y = "Number of tests influenced") +
+  theme_minimal() %+replace% theme(
+    axis.text = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(saveloc, today(), "_Ntests_testType_FacetRegion_bars.png"),
+       plot = last_plot(), device = "png", path = "",
+       scale = 2, # changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 10, # NA default. Manually adjust plot box in RStudio after ggplot()
+       height = 6, # NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", # c("in", "cm", "mm"); 6.32x4, tweak as necessary. Removes canvas whitespace
+       dpi = 300, limitsize = TRUE
+)
+
 
 
 
@@ -3566,3 +3914,202 @@ range(sf_lines %>% filter(Stock %in% c("algorithmGOM", "algorithmMed")) %>% pull
 # slide showing success of known-stock assignment, then success of unknown assignment
 # figure comparing known-GOM with assigned GOM, size distribution and spatial range (i.e., 2 colors of dots on a map)
 # same for med
+
+# 2022-08-01 Reviewer comments ####
+
+# Do we have any tags:
+# - tagged = hatteras/ish, went to GSL
+AllDailies %>%
+  filter(TagLocation %in% c("North_Carolina", "Nantucket", "Hatteras"),
+         MarineZone == "GSL") %>%
+  group_by(toppid) %>%
+  summarise(n = n())
+# toppid      n
+# 5103509     8
+# 5109003    15
+# 5110008    93
+# 5110037    13
+# 5112003   275
+
+# - tagged = hatteras/ish, went to GOM
+AllDailies %>%
+  filter(TagLocation %in% c("North_Carolina", "Nantucket", "Hatteras"),
+         MarineZone == "GOM") %>%
+  group_by(toppid) %>%
+  summarise(n = n())
+# toppid      n
+# 5100133    22
+# 5101355     3
+# 5103509    14
+# 5103535    60
+# 5104456    16
+# 5104457    51
+# 5104527    32
+
+# - tagged = hatteras/ish, went to GSL and GOM
+(AllDailies %>%
+    filter(TagLocation %in% c("North_Carolina", "Nantucket", "Hatteras"),
+           MarineZone == "GSL") %>%
+    pull(toppid) %>%
+    unique()) %in% (AllDailies %>%
+                      filter(TagLocation %in% c("North_Carolina", "Nantucket", "Hatteras"),
+                             MarineZone == "GOM") %>%
+                      pull(toppid) %>%
+                      unique())
+# TRUE (5103509) FALSE FALSE FALSE FALSE
+# Fish is a SS spawner
+
+
+
+# While smaller members of both groups migrate between the North Carolina and Gulf of Maine shelves
+# from late winter to late summer, larger GOM ABT adopt a ‘high effort, high reward’ strategy,
+# distinct from the convenience/trade-off strategy of the younger members. Migrating between the
+# optimal spawning (GOM) and foraging grounds (GSL), comes at a cost of a greater energy expenditure
+# of travel, and more punitive conditions when in those places (food quality and temperature,
+# respectively).
+#
+# R4: What does larger mean? Can you use the lengths here.
+#
+# Emil: did we do a lat/lon movement extent comparison based on size?
+# Would be in SM2? Can compare 2D barplot maps in SM2 to SM1
+# (which actually looks like older fish go to GOM LESS and GSL LESS).
+# But do in R:
+
+# what's mean, median, also try 250cm
+AllDailies %>%
+  filter(Stock == "GOM") %>%
+  pull(FishLengthCm) %>%
+  mean() # 252.6727
+AllDailies %>%
+  filter(Stock == "GOM") %>%
+  pull(FishLengthCm) %>%
+  median() # 259.1849
+
+AllDailies %>%
+  filter(Stock == "GOM") %>%
+  group_by(sizebin = cut(FishLengthCm, breaks = c(-Inf, 250, Inf)), # Group by size smaller/larger than 250
+           Month) %>% # group by month
+  summarise(meanlat = mean(lat, na.rm = TRUE)) %>% #summarise mean lat
+  ggplot() + # make plot
+  geom_path(mapping = aes(x = Month, # lineplot
+                          y = meanlat,
+                          col = sizebin)) +
+  scale_x_continuous(breaks = 1:12, # make x axis name labelled months
+                     labels = month.abb)
+
+ggsave(paste0(saveloc, today(), "_MonthlyMeanLat250cmBinGOMonly.png"),
+       plot = last_plot(), device = "png", path = "",
+       scale = 2, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 6, #NA default. Manually adjust plot box in RStudio after ggplot()
+       height = 4.5, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", #c("in", "cm", "mm"); 6.32x4, tweak as necessary. Removes canvas whitespace
+       dpi = 300, limitsize = TRUE)
+
+
+
+
+
+# 2022-09-28 Editor rejection comment####
+# Something that would be good to clarify upfront too is:
+# how the 118 tags are distributed across the 23 years of tagging?
+# Could the differences in the patterns observed be associated with the variability in the samples?
+# (e.g. different environmental conditions in different years)?
+# A figure clearly showing:
+# the years of the tracks used to represent each stock
+# could assist with alleviating this concern if there is no clear temporal pattern.
+saveloc <- "/home/simon/Dropbox/Blocklab Monterey/Papers/StocksPaper/Figures/"
+hist(AllDailies$Year)
+
+# Create df of:
+DeployYear <- AllDailies %>%
+  group_by(Stock, toppid) %>%
+  summarise(DeployedPerYear = first(Year)) %>% # deployment year by Stock & toppid
+  group_by(Stock, DeployedPerYear) %>%
+  summarise(Year = first(DeployedPerYear),
+            DeployedPerYear = length(DeployedPerYear)) # number of deployments per year
+
+# Create blank df to populate data into, meaning unpopulated cells remain zeroes, required for later
+DeployYearZero <- data.frame(Year = c((min(DeployYear$Year):max(DeployYear$Year)), (min(DeployYear$Year):max(DeployYear$Year))),
+                             Stock = c(rep("GOM", length(min(DeployYear$Year):max(DeployYear$Year))),
+                                       rep("Med", length(min(DeployYear$Year):max(DeployYear$Year)))))
+DeployYearZero <- left_join(x = DeployYearZero, # unpopulated cells are NA
+                            y = DeployYear,
+                            by = c("Stock", "Year"))
+DeployYearZero$DeployedPerYear %<>% replace_na(0) # replace NA with 0
+
+ggplot(DeployYearZero) +
+  geom_col(mapping = aes(x = Year, y = DeployedPerYear, fill = Stock),
+           position = "dodge", colour = NA) +
+  # scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_y_continuous(limits = c(min(DeployYearZero$DeployedPerYear), max(DeployYearZero$DeployedPerYear)),
+                     breaks = (0:max(DeployYearZero$DeployedPerYear)),
+                     # expand = c(0,0)
+  ) + # depth as negative, works
+  scale_x_continuous(limits = c(min(DeployYearZero$Year), max(DeployYearZero$Year)),
+                     breaks = (min(DeployYearZero$Year):max(DeployYearZero$Year)),
+                     # expand = c(0,0)
+  ) +
+  theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
+                                   title = element_text(size = rel(2)),
+                                   legend.text = element_text(size = rel(1.5)),
+                                   legend.position = c(0.5, 0.98),
+                                   legend.direction = "horizontal",
+                                   legend.title = element_blank(),
+                                   panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   strip.text.x = element_text(size = rel(2)),
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  ggtitle(paste0("ABFT deployments per Year by Stock"),
+          subtitle = paste0("1997 - 2019")) # change sflines
+
+ggsave(paste0(saveloc, today(), "_Deploy_Year_Stock_columns", ".png"),
+       plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
+
+
+# Years of tracks i.e. all fishdays, not deployments
+FishdayYear <- AllDailies %>%
+  group_by(Stock, toppid, Year) %>%
+  summarise(FishdaysPerYear = length(Date)) %>% # number of deployments per year
+  group_by(Stock, Year) %>%
+  summarise(FishdaysPerYear = sum(FishdaysPerYear))
+FishdayYearZero <- data.frame(Year = c((min(FishdayYear$Year):max(FishdayYear$Year)), (min(FishdayYear$Year):max(FishdayYear$Year))),
+                              Stock = c(rep("GOM", length(min(FishdayYear$Year):max(FishdayYear$Year))),
+                                        rep("Med", length(min(FishdayYear$Year):max(FishdayYear$Year)))))
+FishdayYearZero <- left_join(x = FishdayYearZero, # unpopulated cells are NA
+                             y = FishdayYear,
+                             by = c("Stock", "Year"))
+FishdayYearZero$FishdaysPerYear %<>% replace_na(0) # replace NA with 0
+
+ggplot(FishdayYearZero) +
+  geom_col(mapping = aes(x = Year, y = FishdaysPerYear, fill = Stock),
+           position = "dodge", colour = NA) +
+  # scale_colour_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_fill_manual(values = c(CB_RED, CB_BLUE)) +
+  scale_y_continuous(limits = c(min(FishdayYearZero$FishdaysPerYear), max(FishdayYearZero$FishdaysPerYear)),
+                     # breaks = (0:max(FishdayYearZero$FishdaysPerYear)),
+                     # expand = c(0,0)
+  ) + # depth as negative, works
+  scale_x_continuous(limits = c(min(FishdayYearZero$Year), max(FishdayYearZero$Year)),
+                     breaks = (min(FishdayYearZero$Year):max(FishdayYearZero$Year)),
+                     # expand = c(0,0)
+  ) +
+  theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
+                                   title = element_text(size = rel(2)),
+                                   legend.text = element_text(size = rel(1.5)),
+                                   legend.position = c(0.5, 0.98),
+                                   legend.direction = "horizontal",
+                                   legend.title = element_blank(),
+                                   panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
+                                   panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+                                   strip.text.x = element_text(size = rel(2)),
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  ggtitle(paste0("ABFT FishDays per Year by Stock"),
+          subtitle = paste0("1997 - 2020")) # change sflines
+
+ggsave(paste0(saveloc, today(), "_FishDay_Year_Stock_columns", ".png"),
+       plot = last_plot(), device = "png", path = "", scale = 3.5, width = 8,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
